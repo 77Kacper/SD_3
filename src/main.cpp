@@ -31,11 +31,11 @@ void pauseProgram() {
 void printMenu()
 {
     cout << "Komendy:\n"
-         << "  1 <klucz>     – insert\n"
-         << "  2 <klucz>     – remove\n"
-         << "  3 <klucz>     – find\n"
-         << "  4             – size (ile elementów)\n"
-         << "  0             – quit\n";
+         << "  1 <klucz> <wartosc> – insert\n"   // ★ zmiana
+         << "  2 <klucz>           – remove\n"
+         << "  3 <klucz>           – find\n"
+         << "  4                   – size\n"
+         << "  0                   – quit\n";
 }
 
 int main()
@@ -58,8 +58,9 @@ int main()
     ChainHash::Table chainHT;
     OA_Table         oaHT;   
 
-    int cmd;
-    int key;
+    int cmd=0;
+    int key=0;
+    int val=0;
 
     while (true)
     {
@@ -81,21 +82,19 @@ int main()
         switch (cmd)
         {
             case 1:
-                if (cin >> key)
-                {
-                    bool ok;
-                    if (choice == 1)
-                        ok = ChainHash::insert(chainHT, key);
-                    else
-                        ok = oa_insert(oaHT, key);
+            if (cin >> key >> val)
+            {
+                bool ok;
+                if (choice == 1)
+                    ok = ChainHash::insert(chainHT, key, val);
+                else
+                    ok = oa_insert(oaHT, key, val);
 
-                    if (ok)
-                        cout << "OK – dodano";
-                    else
-                        cout << "Klucz już istnieje / tablica pełna";
-                }
-                else { cin.clear(); }
-                break;
+                if (ok)  cout << "OK – dodano nową parę";
+                else     cout << "Klucz istniał – wartość zaktualizowana";
+            }       
+            else { cin.clear(); }
+            break;
 
             case 2:
                 if (cin >> key)
@@ -115,21 +114,20 @@ int main()
                 break;
 
             case 3:
-                if (cin >> key)
-                {
-                    bool ok;
-                    if (choice == 1)
-                        ok = ChainHash::find(chainHT, key);
-                    else
-                        ok = oa_find(oaHT, key);
+            if (cin >> key)
+            {
+                int found;
+                bool ok;
+                if (choice == 1)
+                    ok = ChainHash::find(chainHT, key, found);
+                else
+                    ok = oa_find(oaHT, key, found);
 
-                    if (ok)
-                        cout << "Znaleziono";
-                    else
-                        cout << "Nie ma";
-                }
-                else { cin.clear(); }
-                break;
+                if (ok)  cout << "Znaleziono – value = " << found;
+                else     cout << "Nie ma";
+            }
+            else { cin.clear(); }
+            break;
 
             case 4:
                 if (choice == 1)

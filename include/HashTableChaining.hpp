@@ -11,8 +11,11 @@ namespace ChainHash
     struct Node
     {
         int   key;
+        int   value;
         Node* next;
-        Node(int k, Node* n = nullptr) : key(k), next(n) {}
+
+        Node(int k, int v, Node* n = nullptr)
+            : key(k), value(v), next(n) {}
     };
 
     struct Table;
@@ -35,40 +38,54 @@ namespace ChainHash
         }
     };
 
-    int hash(int key) { return key % TABLE_SIZE; }
+    int hash(int key)
+    {
+        int h = key % TABLE_SIZE;      // wynik może być ujemny
+        if (h < 0)
+            h += TABLE_SIZE;           // przesuwamy w zakres 0 … TABLE_SIZE-1
+        return h;
+    }
+
 
 
     std::size_t size(const Table& ht) { return ht.currentSize; }
 
 
-    bool find(const Table& ht, int key)
+    bool find(const Table& ht, int key, int& outValue)
     {
         const Node* cur = ht.buckets[ hash(key) ];
         while (cur)
         {
-            if (cur->key == key) return true;
+            if (cur->key == key) {
+                outValue = cur->value;   // zwracamy wartość przez referencję
+                return true;
+            }
             cur = cur->next;
         }
         return false;
     }
 
-    bool insert(Table& ht, int key)
+    bool insert(Table& ht, int key, int value)      // + value
     {
         int   idx = hash(key);
         Node* cur = ht.buckets[idx];
 
         while (cur)
         {
-            if (cur->key == key) return false;
+            if (cur->key == key) {
+                cur->value = value;   // aktualizacja
+                return false;         // nie zwiększamy currentSize
+            }
             cur = cur->next;
         }
 
-        Node* node = new Node(key, ht.buckets[idx]);
-
+        // wstaw nowy węzeł na początek listy 
+        Node* node = new Node(key, value, ht.buckets[idx]);
         ht.buckets[idx] = node;
         ++ht.currentSize;
         return true;
     }
+
 
     bool remove(Table& ht, int key)
     {
