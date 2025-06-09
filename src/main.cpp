@@ -1,8 +1,9 @@
-// g++ -std=c++17 -O2 src/main.cpp -Iinclude -o demo
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
 #include <limits>
+#include <fstream> 
+#include <string>
 
 #include "HashTableChaining.hpp"
 #include "HashTableOA.hpp"
@@ -33,13 +34,81 @@ void printMenu()
          << "  2 <klucz>           - remove\n"
          << "  3 <klucz>           - find\n"
          << "  4                   - size\n"
+         << "  5 <plik.txt>        - wczytaj wsadowo\n"   // +++
          << "  0                   - quit\n";
+}
+
+void loadFromFile(const string& fname, int choice,
+                  ChainHash::Table& chainHT,
+                  OA_Table&         oaHT,
+                  HashTable&        ht,
+                  AVLTable&         avlHT)
+{
+    ifstream fin(fname);
+    if (!fin) {
+        cout << "Nie mozna otworzyc pliku \"" << fname << "\"\n";
+        return;
+    }
+
+    int cmd, key, val;
+    while (fin >> cmd)        // czytamy kolejne komendy
+    {
+        if (cmd == 0) break;  // „0” w pliku = koniec wsadu
+
+        switch (cmd)
+        {
+            case 1:   // insert
+                if (fin >> key >> val)
+                {
+                    if      (choice == 1) ChainHash::insert(chainHT, key, val);
+                    else if (choice == 2) oa_insert(oaHT, key, val);
+                    else if (choice == 3) ht.insert(key, val);
+                    else                  avl_insert(avlHT, key, val);
+                }
+                break;
+
+            case 2:   // remove
+                if (fin >> key)
+                {
+                    if      (choice == 1) ChainHash::remove(chainHT, key);
+                    else if (choice == 2) oa_remove(oaHT, key);
+                    else if (choice == 3) ht.remove(key);
+                    else                  avl_remove(avlHT, key);
+                }
+                break;
+
+            case 3:   // find (wynik podajemy, żeby było coś widać)
+                if (fin >> key)
+                {
+                    int found;
+                    bool ok = (choice == 1) ? ChainHash::find(chainHT, key, found) :
+                               (choice == 2) ? oa_find(oaHT, key, found)            :
+                               (choice == 3) ? ht.find(key, found)                  :
+                                               avl_find(avlHT, key, found);
+                    cout << "find(" << key << ") -> "
+                         << (ok ? to_string(found) : "brak") << '\n';
+                }
+                break;
+
+            case 4:   // size
+                cout << "size = "
+                     << ((choice == 1) ? ChainHash::size(chainHT) :
+                         (choice == 2) ? oa_size(oaHT)           :
+                         (choice == 3) ? ht.size()               :
+                                         avl_size(avlHT))
+                     << '\n';
+                break;
+
+            default:
+                cout << "Nieznana komenda w pliku – pomijam\n";
+        }
+    }
+    cout << "=== Koniec wsadu z \"" << fname << "\" ===\n";
 }
 
 int main()
 {
     setlocale( LC_ALL, "pl_PL" );
-
     srand(static_cast<unsigned>(time(nullptr)));
 
     // Wybór wariantu
@@ -141,6 +210,16 @@ int main()
                 else if (choice == 3) cout << "Liczba elementów = " << ht.size();
                 else                  cout << "Liczba elementów = " << avl_size(avlHT);
                 break;
+
+            // Wczytywanie z pliku 
+            case 5:
+            {
+                string fname;
+                if (cin >> fname)
+                    loadFromFile(fname, choice, chainHT, oaHT, ht, avlHT);
+                else cin.clear();
+                break;
+            }
 
             default:
                 cout << "Nieznana komenda";
