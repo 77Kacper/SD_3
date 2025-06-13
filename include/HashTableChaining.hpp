@@ -6,7 +6,7 @@
 namespace ChainHash
 {
 
-    const int TABLE_SIZE = 10007;    // mała liczba pierwsza
+    const int INITIAL_CAPACITY = 10007;    // mała liczba pierwsza
 
     struct Node
     {
@@ -23,26 +23,31 @@ namespace ChainHash
 
     struct Table
     {
-        Node*       buckets[TABLE_SIZE];
+        Node**       buckets;
         std::size_t currentSize;
+        std::size_t capacity;
 
-        Table() : currentSize(0)
+        Table()
         {
-            for (int i = 0; i < TABLE_SIZE; ++i)
+            capacity = INITIAL_CAPACITY;
+            currentSize = 0;
+            buckets = new Node*[capacity];
+            for (std::size_t i = 0; i < capacity; ++i)
                 buckets[i] = nullptr;
         }
 
         ~Table()
         {
             clear(*this);
+            delete[] buckets;
         }
     };
 
-    int hash(int key)
+    int hash(int key, std::size_t capacity)
     {
-        int h = key % TABLE_SIZE;      // wynik może być ujemny
+        int h = key % static_cast<int>(capacity);      // wynik może być ujemny
         if (h < 0)
-            h += TABLE_SIZE;           // przesuwamy w zakres 0 … TABLE_SIZE-1
+            h += static_cast<int>(capacity);           // przesuwamy w zakres 0 … TABLE_SIZE-1
         return h;
     }
 
@@ -53,7 +58,7 @@ namespace ChainHash
 
     bool find(const Table& ht, int key, int& outValue)
     {
-        const Node* cur = ht.buckets[ hash(key) ];
+        const Node* cur = ht.buckets[ hash(key, ht.capacity) ];
         while (cur)
         {
             if (cur->key == key) {
@@ -65,21 +70,48 @@ namespace ChainHash
         return false;
     }
 
-    bool insert(Table& ht, int key, int value)      // + value
+    void rehash(Table& ht)
     {
-        int   idx = hash(key);
+        std::size_t new_capacity = ht.capacity * 2;
+        Node** new_buckets = new Node*[new_capacity];
+        for (std::size_t i = 0; i < new_capacity; ++i)
+            new_buckets[i] = nullptr;
+
+        for (std::size_t i = 0; i < ht.capacity; ++i)
+        {
+            Node* cur = ht.buckets[i];
+            while (cur)
+            {
+                Node* next = cur->next;
+                int new_idx = hash(cur->key, new_capacity);
+                cur->next = new_buckets[new_idx];
+                new_buckets[new_idx] = cur;
+                cur = next;
+            }
+        }
+
+        delete[] ht.buckets;
+        ht.buckets = new_buckets;
+        ht.capacity = new_capacity;
+    }
+
+    bool insert(Table& ht, int key, int value)
+    {
+        if (ht.currentSize > 0.75 * ht.capacity)
+            rehash(ht);
+
+        int idx = hash(key, ht.capacity);
         Node* cur = ht.buckets[idx];
 
         while (cur)
         {
             if (cur->key == key) {
-                cur->value = value;   // aktualizacja
-                return false;         // nie zwiększamy currentSize
+                cur->value = value;
+                return false;
             }
             cur = cur->next;
         }
 
-        // wstaw nowy węzeł na początek listy 
         Node* node = new Node(key, value, ht.buckets[idx]);
         ht.buckets[idx] = node;
         ++ht.currentSize;
@@ -89,7 +121,7 @@ namespace ChainHash
 
     bool remove(Table& ht, int key)
     {
-        int   idx  = hash(key);
+        int   idx  = hash(key, ht.capacity);
         Node* cur  = ht.buckets[idx];
         Node* prev = nullptr;
 
@@ -112,7 +144,7 @@ namespace ChainHash
 
     void clear(Table& ht)
     {
-        for (int i = 0; i < TABLE_SIZE; ++i)
+        for (std::size_t i = 0; i < ht.capacity; ++i)
         {
             Node* cur = ht.buckets[i];
             while (cur)

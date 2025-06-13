@@ -1,9 +1,31 @@
 #include "HashTableAVL.hpp"
 
+// Konstruktor z dynamiczną alokacją
+AVLTable::AVLTable() {
+    capacity = 10007;
+    used = 0;
+    buckets = new AVLNode*[capacity]();
+}
+
 // Pomocnicza funkcja – wysokość węzła
 int avl_node_height(AVLNode* node)
 {
     if (node)
+        return node->height;
+    else
+        return 0;
+}
+
+// Destruktor
+AVLTable::~AVLTable()
+{
+    avl_clear(*this);
+     delete[] buckets;
+}
+
+// Pomocnicza funkcja – wysokość węzła
+int avl_node_height(AVLNode* node) {
+    if (node != nullptr)
         return node->height;
     else
         return 0;
@@ -103,9 +125,9 @@ AVLNode* avl_insert_node(AVLNode* node, int key, int value, bool& inserted)
 // Wyszukiwanie
 bool avl_find(const AVLTable& t, int key, int& outVal)
 {
-    int index = key % AVL_TABLE_SIZE;
+    int index = key % t.capacity;
     if (index < 0)
-        index += AVL_TABLE_SIZE;
+        index += t.capacity;
 
     AVLNode* cur = t.buckets[index];
     while (cur)
@@ -125,16 +147,44 @@ bool avl_find(const AVLTable& t, int key, int& outVal)
     return false;
 }
 
+void avl_copy_tree(AVLNode* node, AVLNode** new_buckets, size_t new_capacity) {
+    if (node == nullptr) return;
+    avl_copy_tree(node->left, new_buckets, new_capacity);
+    avl_copy_tree(node->right, new_buckets, new_capacity);
+
+    size_t index = node->key % new_capacity;
+    if (index < 0) index += new_capacity;
+
+    bool inserted = false;
+    new_buckets[index] = avl_insert_node(new_buckets[index], node->key, node->value, inserted);
+}
+
+void avl_rehash(AVLTable& t) {
+    size_t new_capacity = t.capacity * 2;
+    AVLNode** new_buckets = new AVLNode*[new_capacity]();
+
+    for (size_t i = 0; i < t.capacity; ++i) {
+        avl_copy_tree(t.buckets[i], new_buckets, new_capacity);
+        avl_delete_tree(t.buckets[i]);
+    }
+
+    delete[] t.buckets;
+    t.buckets = new_buckets;
+    t.capacity = new_capacity;
+}
 
 // Wstawianie
-bool avl_insert(AVLTable& t, int key, int value)
-{
-    int index = key % AVL_TABLE_SIZE;
-    if (index < 0) index += AVL_TABLE_SIZE;
+bool avl_insert(AVLTable& t, int key, int value) {
+    if (t.used > 0.75 * t.capacity) {
+        avl_rehash(t);
+    }
+
+    int index = key % t.capacity;
+    if (index < 0) index += t.capacity;
 
     bool inserted = false;
     t.buckets[index] = avl_insert_node(t.buckets[index], key, value, inserted);
-    if (inserted) ++t.used;
+    if (inserted) t.used++;
     return inserted;
 }
 
@@ -184,8 +234,8 @@ AVLNode* avl_remove_node(AVLNode* node, int key, bool& removed)
 
 bool avl_remove(AVLTable& t, int key)
 {
-    int index = key % AVL_TABLE_SIZE;
-    if (index < 0) index += AVL_TABLE_SIZE;
+    int index = key % t.capacity;
+    if (index < 0) index += t.capacity;
 
     bool removed = false;
     t.buckets[index] = avl_remove_node(t.buckets[index], key, removed);
@@ -205,7 +255,7 @@ void avl_delete_tree(AVLNode* node)
 // Czyszczenie całej tablicy
 void avl_clear(AVLTable& t)
 {
-    for (int i = 0; i < AVL_TABLE_SIZE; ++i)
+    for (int i = 0; i < t.capacity; ++i)
     {
         avl_delete_tree(t.buckets[i]);
         t.buckets[i] = nullptr;
@@ -214,21 +264,16 @@ void avl_clear(AVLTable& t)
 }
 
 // Hash
-int avl_hash(int key)
-{
-    int h = key % AVL_TABLE_SIZE;
-    if (h < 0) h += AVL_TABLE_SIZE;
-    return h;
+int avl_hash(int key, size_t capacity) {
+    int h = key % capacity;
+    if (h < 0)
+        return h + capacity;
+    else
+        return h;
 }
 
 // Rozmiar
 size_t avl_size(const AVLTable& t)
 {
     return t.used;
-}
-
-// Destruktor
-AVLTable::~AVLTable()
-{
-    avl_clear(*this);
 }

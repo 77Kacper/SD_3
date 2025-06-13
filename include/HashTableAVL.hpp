@@ -23,25 +23,23 @@ struct AVLNode
 // tablica mieszająca – każdy kubełek to korzeń AVL
 struct AVLTable
 {
-    AVLNode* buckets[AVL_TABLE_SIZE];
+    AVLNode** buckets;
     size_t used;          // liczba par w całej tablicy
+    size_t capacity;
 
     // konstruktor – zeruje kubełki
-    AVLTable() : used(0)
-    {
-        for (int i = 0; i < AVL_TABLE_SIZE; ++i)
-            buckets[i] = nullptr;
-    }
+    AVLTable();
 
     // destruktor
     ~AVLTable();
 };
 
-int avl_hash(int key);
+int avl_hash(int key, size_t capacity);
 size_t avl_size(const AVLTable& t);
 bool avl_find(const AVLTable& t, int key, int& outVal);
 bool avl_insert(AVLTable& t, int key, int value);
 bool avl_remove(AVLTable& t, int key);
 void avl_clear(AVLTable& t);
+void avl_rehash(AVLTable& t);
 
 #endif /* HASHTABLE_AVL_HPP */
